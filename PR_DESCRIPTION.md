@@ -13,6 +13,8 @@ This PR implements the requested in-memory ledger core and validates behavior th
 - Added required decision logs: `NUMBERS.md`, `AMBIGUITIES.md`, `REJECTED.md`, `WORKLOG.md`.
 - Added CI workflow that runs only the passing suite.
 - Added architecture/thought-process artifact in `docs/approach.html`.
+- Added fee-semantics regression coverage to prevent transient intraday negatives from triggering overdraft fees.
+- Added replay checkpoints so tests can assert E7 pre-fee historical closes literally.
 
 ## Design reasoning
 1. **Replay order and value date are separated intentionally**
@@ -25,6 +27,9 @@ This PR implements the requested in-memory ledger core and validates behavior th
    - Fee reconciliation is chronological and idempotent by `(account, day)`.
 4. **Interest is exact at currency precision**
    - Daily accruals are rounded per-currency and summed exactly into Day-6 capitalization.
+5. **Fixture pass ≠ domain correctness**
+   - E1–E10 alone did not distinguish end-of-day fee semantics from transient-balance fee semantics.
+   - A minimal Day-1 debit/credit counterexample exposed the bug and drove a focused fee-timing fix.
 
 ## Incorrect acceptance criteria explicitly rejected
 See `REJECTED.md` for complete rationale. Rejected criteria:
@@ -40,6 +45,8 @@ See `REJECTED.md` for complete rationale. Rejected criteria:
   - `python -m pytest tests`
 - Required known-red test (must fail):
   - `python -m pytest tests_known_red/test_stream_order_sensitivity.py`
+- Fee timing regression:
+  - `python -m pytest tests/test_replay.py -k transient_intraday_negative`
 
 ## Reviewer checklist
 - [ ] Daily report includes Day 1..Day 6 closes, fees, auth states, errors, interest

@@ -1,7 +1,7 @@
 # Ambiguities and Resolutions
 
 1. **When to assess fees after backdated events?**
-   - Resolution: reconcile fees for days up to current booked day every time a money-moving event is appended.
+   - Resolution: assess fees only for closed days. As replay advances to a later booked day, close prior day(s). After a backdated money posting, re-evaluate already-closed historical days, but never assess the still-open day.
 
 2. **Does reversal cancel already-booked overdraft fees?**
    - Resolution: no implicit fee reversal rule is provided; fees remain append-only.
