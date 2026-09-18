@@ -33,7 +33,7 @@ This is a hardening PR on top of the existing ledger implementation.
 - Corrected lifecycle honesty: implemented non-settlement terminal state is exactly `DECLINED`.
 - Added explicit production-gap lifecycle states as non-implemented.
 - Updated `docs/approach.html` with synchronized “Production Architecture & Trade-offs” section.
-- Generated required PDF: `docs/architecture-tradeoffs.pdf` (4 pages, under 25 MB).
+- Generated required PDF: `docs/architecture-tradeoffs.pdf` (3 pages, under 25 MB).
 
 ## Regulatory references used (primary CBUAE URLs)
 - https://rulebook.centralbank.ae/en/rulebook/article-7-internal-control-system
@@ -45,6 +45,6 @@ This is a hardening PR on top of the existing ledger implementation.
 - `python -m pytest tests_known_red/test_stream_order_sensitivity.py` → intentional fail (expected).
 - `python -m ledger_core` → output inspected.
 - `docs/architecture-tradeoffs.pdf` verified:
-  - page count: 4,
+  - page count: 3,
   - size: < 25 MB,
   - all pages rendered and visually checked.

@@ -74,6 +74,7 @@ python -m pytest tests_known_red/test_stream_order_sensitivity.py
 
 - CI workflow: `.github/workflows/ci.yml` (runs passing suite only).
 - PR brief: `PR_DESCRIPTION.md`.
+- Follow-up PR notes: `PR_NOTES.md`.
 - Visual thought-process artifact: `docs/approach.html`.
 - Architecture/production considerations: `ARCHITECTURE_DECISIONS.md`.
 - Submission PDF: `docs/architecture-tradeoffs.pdf`.
@@ -111,14 +112,11 @@ Replay-->>Caller: daily report and replay checkpoints
 
 ```mermaid
 stateDiagram-v2
-[*] --> ACTIVE: authorization approved
-[*] --> DECLINED: authorization declined
-ACTIVE --> SETTLED: valid matching settlement
-note right of ACTIVE
-  Invalid or unknown settlement
-  emits a replay error.
-  Authorization state is unchanged.
-end note
+[*] --> ACTIVE: authorization accepted
+[*] --> DECLINED: authorization rejected
+ACTIVE --> SETTLED: matching settlement
+ACTIVE --> ERROR: invalid settlement reference
 DECLINED --> [*]
 SETTLED --> [*]
+ERROR --> [*]
 ```

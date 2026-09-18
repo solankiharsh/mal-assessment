@@ -12,8 +12,8 @@ This file records numeric values that are either domain rules or deliberate impl
 | E10 instalments | 3 | Required by input event | Not a tuning parameter |
 | E10 total | BHD 10.000 | Required by input event | Smaller total changes fixture |
 | BHD remainder quantum | 0.001 | Smallest representable BHD unit | 0.0005 is unrepresentable at 3dp |
-| Python runtime floor | `>=3.11` | Chosen supported runtime baseline for this assessment; compatibility for older runtimes is intentionally not in scope | A lower supported floor expands compatibility matrix and maintenance surface beyond this deliverable |
-| CI Python versions | `3.11`, `3.12` | Matrix validates both declared support floor and next-minor runtime to catch compatibility regressions early | Single-version CI can miss runtime-specific failures |
+| Python runtime floor | `>=3.11` | Uses modern typing syntax (`list[dict]`, `int | None`) and keeps local/runtime matrix small | Lower floor (3.10 or below) would require backports or syntax changes |
+| CI Python version | 3.12 | Single stable CI interpreter above minimum floor; catches regressions while staying close to local tooling | 3.11-only CI gives less forward-compatibility signal |
 | Project version | `0.1.0` | Pre-1.0 assessment artifact with non-stable public API expectations | `0.0.x` obscures that this is an end-to-end working slice |
 
 ## Deliberately removed arbitrary pin
