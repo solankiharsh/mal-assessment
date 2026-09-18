@@ -23,11 +23,11 @@
         line-height: 1.45;
       }
       .wrap {
-        max-width: 1000px;
+        max-width: 1040px;
         margin: 0 auto;
         padding: 28px 20px 56px;
       }
-      h1, h2 { margin: 0 0 12px; }
+      h1, h2, h3 { margin: 0 0 12px; }
       p { margin: 8px 0 0; color: var(--muted); }
       .grid {
         display: grid;
@@ -50,6 +50,11 @@
         background: var(--accent);
         margin-bottom: 8px;
       }
+      .sep {
+        margin: 24px 0 0;
+        border-top: 1px solid #2c3c69;
+        padding-top: 18px;
+      }
       ul { margin: 8px 0 0 18px; color: var(--muted); }
       li { margin: 5px 0; }
       code {
@@ -68,27 +73,60 @@
       .ok { color: var(--ok); }
       .warn { color: var(--warn); }
       .bad { color: var(--bad); }
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .panel {
+        border: 1px solid #2c3c69;
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .panel h3 {
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+        font-size: 14px;
+      }
+      .table th, .table td {
+        border: 1px solid #2c3c69;
+        padding: 8px;
+        vertical-align: top;
+      }
+      .table th {
+        text-align: left;
+        color: #c7d7ff;
+      }
       .footer {
         margin-top: 26px;
         font-size: 13px;
         color: var(--muted);
+      }
+      a { color: #aecdff; }
+      @media (max-width: 760px) {
+        .split { grid-template-columns: 1fr; }
       }
     </style>
   </head>
   <body>
     <div class="wrap">
       <h1>Ledger Core — Thought Process & Approach</h1>
-      <p>Artifact date: 2026-09-18. This visual summarizes incremental engineering decisions, tradeoffs, and verification strategy.</p>
+      <p>Artifact date: 2026-09-18. This visual summarizes implementation choices, constraints, and production trade-offs.</p>
 
       <div class="grid">
         <section class="card">
           <span class="pill">Problem Frame</span>
           <h2>Non-negotiables first</h2>
           <ul>
-            <li>Append-only ledger; no mutation/deletion.</li>
-            <li>Stream order drives decisions; value date drives closes.</li>
-            <li>Overdraft fee is AED-only in this fixture (no FX rule provided).</li>
-            <li>Interest accrues daily on positive close; capitalizes once on Day 6.</li>
+            <li>Append-only postings; no mutation/deletion of prior records.</li>
+            <li>Stream order governs decisions and validation outcomes.</li>
+            <li>Value date governs effective closes and historical monetary effects.</li>
+            <li>Interest accrues daily and capitalizes once at end of Day 6.</li>
           </ul>
         </section>
 
@@ -96,29 +134,29 @@
           <span class="pill">Modeling</span>
           <h2>Single replay seam</h2>
           <ul>
-            <li><code>replay_ledger(accounts, events)</code> returns full report.</li>
-            <li>Internals hide postings, fee reconciliation, auth state machine.</li>
-            <li>Tests bind to externally visible outcomes, not private helpers.</li>
+            <li><code>replay_ledger(accounts, events)</code> is the public seam.</li>
+            <li>Internal helpers remain private.</li>
+            <li>Tests assert literal outputs, not helper internals.</li>
           </ul>
         </section>
 
         <section class="card">
-          <span class="pill">Risky Edge</span>
-          <h2>Backdated debit cascade</h2>
+          <span class="pill">Critical Fix</span>
+          <h2>Closed-day fee timing</h2>
           <ul>
-            <li>E7 (booked Day 5, value Day 2) changes historical closes.</li>
-            <li>Fee reconciliation runs chronologically Day 1..current booked day.</li>
-            <li>Result: fees on Day 2, Day 4, Day 5 exactly once each.</li>
+            <li>Overdraft fee assessment waits for day close.</li>
+            <li>Backdated postings can trigger fees on already closed historical days.</li>
+            <li>Open current day is never fee-assessed mid-day.</li>
           </ul>
         </section>
 
         <section class="card">
           <span class="pill">Precision</span>
-          <h2>Currency-safe math</h2>
+          <h2>Currency-safe arithmetic</h2>
           <ul>
-            <li>Use <code>Decimal</code> with per-currency quantization.</li>
-            <li>AED 2dp, BHD 3dp.</li>
-            <li>E10 split conserves total as <code>3.333, 3.333, 3.334</code>.</li>
+            <li>AED 2dp, BHD 3dp using <code>Decimal</code>.</li>
+            <li>E10 conserves exact BHD total as <code>3.333, 3.333, 3.334</code>.</li>
+            <li>Daily rounded interest accruals sum exactly to capitalization.</li>
           </ul>
         </section>
       </div>
@@ -126,25 +164,90 @@
       <section class="card" style="margin-top:16px;">
         <span class="pill">Incremental Build Flow</span>
         <div class="flow">
-          <div class="step"><strong>1) Spec pass</strong> → captured constants, ambiguities, rejected criteria before code.</div>
-          <div class="step"><strong>2) Core pass</strong> → implemented append-only postings + auth/settlement/reversal + fees + interest.</div>
-          <div class="step"><strong>3) Verification pass</strong> → golden tests + deterministic replay test + known-red intentional failure.</div>
-          <div class="step"><strong>4) Delivery pass</strong> → README runbook + CI workflow + PR description artifact.</div>
+          <div class="step"><strong>1) Spec pass</strong> → constants, ambiguities, and rejected criteria captured first.</div>
+          <div class="step"><strong>2) Core pass</strong> → append-only replay + authorization + settlement + reversal + fees + interest.</div>
+          <div class="step"><strong>3) Evidence pass</strong> → literal invariant tests for E6, E7/E9, ACC-002 interest, and checkpoints.</div>
+          <div class="step"><strong>4) Delivery pass</strong> → CI, architecture writeup, HTML artifact, and PDF submission file.</div>
         </div>
       </section>
+
+      <div class="sep">
+        <h2>Production Architecture & Trade-offs</h2>
+        <div class="grid">
+          <section class="card">
+            <span class="pill">Append-only at scale</span>
+            <ul>
+              <li>Hot path: <code>close_for_day()</code> repeatedly scans <code>postings</code>.</li>
+              <li>At 100× volume, CPU/read amplification likely hurts before append throughput.</li>
+              <li>Cheapest improvement: keep immutable journal + add derived per-account/day close index + optional checkpoints outside debug/test mode.</li>
+            </ul>
+          </section>
+
+          <section class="card">
+            <span class="pill">Value-dated in production</span>
+            <ul>
+              <li>Two time axes: booking-time decisions and value-date monetary effects.</li>
+              <li>Backvalued entries can alter historical closes, fees, and customer-facing outputs.</li>
+              <li>Proposed control: <strong>Backvalue Impact Gate</strong> with reason, provenance, impact diff, and maker-checker for material customer-visible changes.</li>
+            </ul>
+          </section>
+        </div>
+
+        <section class="card" style="margin-top:16px;">
+          <span class="pill">Authorization lifecycle</span>
+          <div class="split">
+            <div class="panel">
+              <h3>IMPLEMENTED</h3>
+              <ul>
+                <li>Only non-settlement terminal outcome: <code>DECLINED</code>.</li>
+                <li><code>ACTIVE</code> may remain open within the exercise window.</li>
+                <li>Unknown/inactive settlement reference is an error, not a lifecycle transition.</li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h3>NOT IMPLEMENTED / PRODUCTION GAP</h3>
+              <ul>
+                <li><code>EXPIRED</code></li>
+                <li><code>VOIDED</code> / authorization reversal</li>
+                <li><code>PARTIALLY_CAPTURED</code> with remainder release</li>
+                <li><code>ADMIN_RELEASED</code> / <code>NETWORK_RELEASED</code></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" style="margin-top:16px;">
+          <span class="pill">What was cut</span>
+          <table class="table">
+            <thead>
+              <tr><th>Simplification</th><th>Deferred risk</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>In-memory single process</td><td>HA/recovery and cross-node consistency risks</td></tr>
+              <tr><td>No durable event store/snapshots</td><td>Long-horizon replay latency and retention pressure</td></tr>
+              <tr><td>No lifecycle states beyond ACTIVE/DECLINED/SETTLED</td><td>Missing expiry/void/partial-capture operations</td></tr>
+              <tr><td>No downstream GL/customer correction pipelines</td><td>Reconciliation drift and customer-dispute handling gaps</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
 
       <section class="card" style="margin-top:16px;">
         <span class="pill">Acceptance Readout</span>
         <ul>
-          <li class="ok">✔ Runnable replay command prints per-day balances, fees, auth states, and errors.</li>
-          <li class="ok">✔ Required docs present: README, NUMBERS, AMBIGUITIES, REJECTED, WORKLOG.</li>
-          <li class="ok">✔ One intentionally failing test included and annotated.</li>
-          <li class="warn">⚠ Known-red test intentionally fails by design; CI excludes it from pass gate.</li>
-          <li class="bad">✘ No web/UI/database/persistence layer added (as required).</li>
+          <li class="ok">✔ Runnable replay output includes per-day closes, fees, auth states, and errors.</li>
+          <li class="ok">✔ Required known-red test remains intentionally failing when run separately.</li>
+          <li class="ok">✔ Architecture trade-offs documented in Markdown and PDF artifacts.</li>
+          <li class="warn">⚠ CI passes only the normal suite; known-red remains opt-in and intentionally red.</li>
+          <li class="bad">✘ No web/UI/database/persistence layer added (required scope boundary).</li>
         </ul>
       </section>
 
-      <p class="footer">Open locally in browser: <code>docs/approach.html</code></p>
+      <p class="footer">
+        Open locally: <code>docs/approach.html</code><br/>
+        PDF submission artifact: <code>docs/architecture-tradeoffs.pdf</code><br/>
+        Canonical text source: <code>ARCHITECTURE_DECISIONS.md</code>
+      </p>
     </div>
   </body>
 </html>

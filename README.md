@@ -77,6 +77,7 @@ python -m pytest tests_known_red/test_stream_order_sensitivity.py
 - Follow-up PR notes: `PR_NOTES.md`.
 - Visual thought-process artifact: `docs/approach.html`.
 - Architecture/production considerations: `ARCHITECTURE_DECISIONS.md`.
+- Submission PDF: `docs/architecture-tradeoffs.pdf`.
 
 ## 📁 Project map
 
