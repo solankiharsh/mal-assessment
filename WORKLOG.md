@@ -25,3 +25,9 @@
 - Fixed auth timeline reporting so Day 2 shows `ACTIVE` and Day 4+ shows `SETTLED` for Auth-A.
 - Corrected fee/day reporting to avoid negative zero formatting artifacts.
 - Validated commands: `python -m pytest` passes, and known-red test fails as intended.
+
+## 2026-09-18 14:32 +04:00
+- Added CI workflow in `.github/workflows/ci.yml` to run passing tests on push/PR.
+- Authored `PR_DESCRIPTION.md` with design rationale and reviewer checklist.
+- Added visual architecture/thought-process artifact at `docs/approach.html`.
+- Updated `README.md` with CI and artifact references.

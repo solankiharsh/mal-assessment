@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ledger Core Approach Artifact</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --card: #131a2e;
+        --text: #e6ecff;
+        --muted: #9fb0e5;
+        --accent: #7aa2ff;
+        --ok: #54c07a;
+        --warn: #ffcc66;
+        --bad: #ff7d7d;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.45;
+      }
+      .wrap {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 28px 20px 56px;
+      }
+      h1, h2 { margin: 0 0 12px; }
+      p { margin: 8px 0 0; color: var(--muted); }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        margin-top: 18px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid #263252;
+        border-radius: 12px;
+        padding: 14px 14px 12px;
+      }
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: #00122f;
+        background: var(--accent);
+        margin-bottom: 8px;
+      }
+      ul { margin: 8px 0 0 18px; color: var(--muted); }
+      li { margin: 5px 0; }
+      code {
+        background: #0a1226;
+        border: 1px solid #22325d;
+        padding: 1px 5px;
+        border-radius: 5px;
+        color: #d8e4ff;
+      }
+      .flow {
+        margin-top: 18px;
+        border-left: 2px solid #2f4479;
+        padding-left: 14px;
+      }
+      .step { margin: 10px 0 14px; }
+      .ok { color: var(--ok); }
+      .warn { color: var(--warn); }
+      .bad { color: var(--bad); }
+      .footer {
+        margin-top: 26px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Ledger Core — Thought Process & Approach</h1>
+      <p>Artifact date: 2026-09-18. This visual summarizes incremental engineering decisions, tradeoffs, and verification strategy.</p>
+
+      <div class="grid">
+        <section class="card">
+          <span class="pill">Problem Frame</span>
+          <h2>Non-negotiables first</h2>
+          <ul>
+            <li>Append-only ledger; no mutation/deletion.</li>
+            <li>Stream order drives decisions; value date drives closes.</li>
+            <li>Overdraft fee is AED-only in this fixture (no FX rule provided).</li>
+            <li>Interest accrues daily on positive close; capitalizes once on Day 6.</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <span class="pill">Modeling</span>
+          <h2>Single replay seam</h2>
+          <ul>
+            <li><code>replay_ledger(accounts, events)</code> returns full report.</li>
+            <li>Internals hide postings, fee reconciliation, auth state machine.</li>
+            <li>Tests bind to externally visible outcomes, not private helpers.</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <span class="pill">Risky Edge</span>
+          <h2>Backdated debit cascade</h2>
+          <ul>
+            <li>E7 (booked Day 5, value Day 2) changes historical closes.</li>
+            <li>Fee reconciliation runs chronologically Day 1..current booked day.</li>
+            <li>Result: fees on Day 2, Day 4, Day 5 exactly once each.</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <span class="pill">Precision</span>
+          <h2>Currency-safe math</h2>
+          <ul>
+            <li>Use <code>Decimal</code> with per-currency quantization.</li>
+            <li>AED 2dp, BHD 3dp.</li>
+            <li>E10 split conserves total as <code>3.333, 3.333, 3.334</code>.</li>
+          </ul>
+        </section>
+      </div>
+
+      <section class="card" style="margin-top:16px;">
+        <span class="pill">Incremental Build Flow</span>
+        <div class="flow">
+          <div class="step"><strong>1) Spec pass</strong> → captured constants, ambiguities, rejected criteria before code.</div>
+          <div class="step"><strong>2) Core pass</strong> → implemented append-only postings + auth/settlement/reversal + fees + interest.</div>
+          <div class="step"><strong>3) Verification pass</strong> → golden tests + deterministic replay test + known-red intentional failure.</div>
+          <div class="step"><strong>4) Delivery pass</strong> → README runbook + CI workflow + PR description artifact.</div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <span class="pill">Acceptance Readout</span>
+        <ul>
+          <li class="ok">✔ Runnable replay command prints per-day balances, fees, auth states, and errors.</li>
+          <li class="ok">✔ Required docs present: README, NUMBERS, AMBIGUITIES, REJECTED, WORKLOG.</li>
+          <li class="ok">✔ One intentionally failing test included and annotated.</li>
+          <li class="warn">⚠ Known-red test intentionally fails by design; CI excludes it from pass gate.</li>
+          <li class="bad">✘ No web/UI/database/persistence layer added (as required).</li>
+        </ul>
+      </section>
+
+      <p class="footer">Open locally in browser: <code>docs/approach.html</code></p>
+    </div>
+  </body>
+</html>

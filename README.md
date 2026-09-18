@@ -32,6 +32,15 @@ Known-red suite (required intentional failure):
 python -m pytest tests_known_red/test_stream_order_sensitivity.py
 ```
 
+## CI
+
+- GitHub Actions workflow runs the passing suite on push/PR to `main`.
+- Workflow file: `.github/workflows/ci.yml`.
+
+## Visual artifact
+
+- Architecture + thought process artifact: `docs/approach.html`.
+
 ## Notes
 
 - Stream order is authoritative for decisions.
