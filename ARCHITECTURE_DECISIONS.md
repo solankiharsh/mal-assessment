@@ -2,6 +2,40 @@
 
 This document describes decisions and production considerations derived from the current in-memory ledger implementation. It intentionally distinguishes **what the code implements today** from **production behaviors not implemented yet**.
 
+## Implementation flow diagrams
+
+```mermaid
+sequenceDiagram
+participant Caller
+participant Replay as replay_ledger
+participant Ledger as AppendOnlyPostings
+participant Fees as assess_overdraft_fees_for_days
+participant Close as close_for_day
+
+Caller->>Replay: replay_ledger(accounts, events)
+loop Events in supplied stream order
+    Replay->>Replay: process event decisions
+    Replay->>Ledger: append monetary posting
+    Replay->>Fees: reconcile closed historical days
+    Fees->>Close: close_for_day(account_id, day)
+    Close-->>Fees: effective day close
+    Fees->>Ledger: append fee once per account/day
+end
+Replay->>Fees: assess final closed days
+Replay-->>Caller: daily report and replay checkpoints
+```
+
+```mermaid
+stateDiagram-v2
+[*] --> ACTIVE: authorization accepted
+[*] --> DECLINED: authorization rejected
+ACTIVE --> SETTLED: matching settlement
+ACTIVE --> ERROR: invalid settlement reference
+DECLINED --> [*]
+SETTLED --> [*]
+ERROR --> [*]
+```
+
 ## 1) Append-only at scale
 
 ### What the current code does

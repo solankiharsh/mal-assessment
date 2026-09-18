@@ -104,3 +104,15 @@
 - Pushed branch `pr/final-submission-hardening` and captured PR creation URL.
 - Checked GitHub Actions run history via GitHub API.
 - Observed no push-triggered run for this branch because workflow push trigger targets `main` only; branch CI will execute once PR is opened (`pull_request` on `main`).
+
+## 2026-09-18 15:17 +04:00
+- Addressed code-review comments on this branch:
+  - strengthened fee duplicate-proof assertion with `len(fee_postings) == 3`;
+  - updated renderer to use shared `WINDOW_DAYS` for header and per-day iteration;
+  - replaced `AMBIGUITIES.md` with a single canonical duplicate-event-ID resolution (no redundant entry).
+- Added provided sequence/state Mermaid diagrams to `README.md`, `ARCHITECTURE_DECISIONS.md`, and `docs/approach.html`.
+- Regenerated `docs/architecture-tradeoffs.pdf` after architecture-doc updates.
+- Verification rerun:
+  - `python -m pytest tests -q` => `5 passed`.
+  - `python -m pytest tests_known_red/test_stream_order_sensitivity.py -q` => intentional fail.
+  - `python -m ledger_core` => output remains consistent.

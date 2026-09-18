@@ -88,6 +88,7 @@ def test_reversal_is_compensating_and_fees_remain_append_only() -> None:
         for posting in report["postings"]
         if posting["account_id"] == "ACC-001" and posting["kind"] == "OVERDRAFT_FEE"
     ]
+    assert len(fee_postings) == 3
     assert {(posting["value_day"], posting["amount"]) for posting in fee_postings} == {
         (2, Decimal("-25.00")),
         (4, Decimal("-25.00")),

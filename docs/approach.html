@@ -243,6 +243,39 @@
         </ul>
       </section>
 
+      <section class="card" style="margin-top:16px;">
+        <span class="pill">Reference Diagrams</span>
+        <h2>Mermaid specs used in docs</h2>
+        <p>These snippets are mirrored in the Markdown docs for GitHub-native rendering.</p>
+        <pre><code>sequenceDiagram
+participant Caller
+participant Replay as replay_ledger
+participant Ledger as AppendOnlyPostings
+participant Fees as assess_overdraft_fees_for_days
+participant Close as close_for_day
+
+Caller-&gt;&gt;Replay: replay_ledger(accounts, events)
+loop Events in supplied stream order
+    Replay-&gt;&gt;Replay: process event decisions
+    Replay-&gt;&gt;Ledger: append monetary posting
+    Replay-&gt;&gt;Fees: reconcile closed historical days
+    Fees-&gt;&gt;Close: close_for_day(account_id, day)
+    Close--&gt;&gt;Fees: effective day close
+    Fees-&gt;&gt;Ledger: append fee once per account/day
+end
+Replay-&gt;&gt;Fees: assess final closed days
+Replay--&gt;&gt;Caller: daily report and replay checkpoints</code></pre>
+
+        <pre><code>stateDiagram-v2
+[*] --&gt; ACTIVE: authorization accepted
+[*] --&gt; DECLINED: authorization rejected
+ACTIVE --&gt; SETTLED: matching settlement
+ACTIVE --&gt; ERROR: invalid settlement reference
+DECLINED --&gt; [*]
+SETTLED --&gt; [*]
+ERROR --&gt; [*]</code></pre>
+      </section>
+
       <p class="footer">
         Open locally: <code>docs/approach.html</code><br/>
         PDF submission artifact: <code>docs/architecture-tradeoffs.pdf</code><br/>
