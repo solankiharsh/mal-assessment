@@ -43,3 +43,8 @@
 - Refactored fee timing to assess only closed day(s), while still reconciling already-closed historical days after backdated postings.
 - Added generic replay checkpoints and asserted E7 pre-fee closes: Day2 `-370.00`, Day3 `30.00`, Day4 `-155.00`, Day5 `-155.00`.
 - Re-ran passing suite; all passing tests green after fix.
+
+## 2026-09-18 14:51 +04:00
+- Created follow-up branch `pr/followup-ledger-hardening` to raise a formal PR into `main`.
+- Added `PR_NOTES.md` and linked it in `README.md` for reviewer context.
+- No domain logic changes in this branch; metadata/documentation touch only.
