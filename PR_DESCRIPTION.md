@@ -45,6 +45,6 @@ This is a hardening PR on top of the existing ledger implementation.
 - `python -m pytest tests_known_red/test_stream_order_sensitivity.py` → intentional fail (expected).
 - `python -m ledger_core` → output inspected.
 - `docs/architecture-tradeoffs.pdf` verified:
-  - page count: 3,
+  - page count: 4,
   - size: < 25 MB,
   - all pages rendered and visually checked.
