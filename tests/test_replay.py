@@ -22,6 +22,7 @@ def test_replay_golden_results() -> None:
     assert acc1[5]["fee_assessed"] == Decimal("25.00")
 
     assert acc1[4]["errors"][0]["code"] == "UNKNOWN_AUTHORIZATION"
+    assert not any(posting["source_event_id"] == "E6" for posting in report["postings"])
 
     assert report["authorizations"]["Auth-A"]["status"] == "SETTLED"
     assert report["authorizations"]["Auth-B"]["status"] == "DECLINED"
@@ -43,9 +44,20 @@ def test_replay_golden_results() -> None:
     assert report["interest_capitalization"]["ACC-001"] == Decimal("0.93")
 
     assert acc2[1]["closing_balance"] == Decimal("0.000")
+    assert acc2[2]["closing_balance"] == Decimal("0.000")
+    assert acc2[3]["closing_balance"] == Decimal("0.000")
     assert acc2[4]["closing_balance"] == Decimal("0.000")
     assert acc2[5]["closing_balance"] == Decimal("10.000")
     assert acc2[6]["closing_balance"] == Decimal("10.008")
+    assert report["daily_interest"]["ACC-002"] == {
+        1: Decimal("0.000"),
+        2: Decimal("0.000"),
+        3: Decimal("0.000"),
+        4: Decimal("0.000"),
+        5: Decimal("0.004"),
+        6: Decimal("0.004"),
+    }
+    assert report["interest_capitalization"]["ACC-002"] == Decimal("0.008")
 
     instalments = [
         entry["amount"]
@@ -53,6 +65,35 @@ def test_replay_golden_results() -> None:
         if entry["source_event_id"] == "E10"
     ]
     assert instalments == [Decimal("3.333"), Decimal("3.333"), Decimal("3.334")]
+    assert sum(instalments, Decimal("0.000")) == Decimal("10.000")
+
+
+def test_reversal_is_compensating_and_fees_remain_append_only() -> None:
+    report = replay_ledger(default_accounts(), default_events())
+
+    e7_postings = [posting for posting in report["postings"] if posting["source_event_id"] == "E7"]
+    e9_postings = [posting for posting in report["postings"] if posting["source_event_id"] == "E9"]
+
+    assert len(e7_postings) == 1
+    assert e7_postings[0]["amount"] == Decimal("-620.00")
+    assert e7_postings[0]["value_day"] == 2
+
+    assert len(e9_postings) == 1
+    assert e9_postings[0]["amount"] == Decimal("620.00")
+    assert e9_postings[0]["value_day"] == 2
+    assert e9_postings[0]["reversal_of_event_id"] == "E7"
+
+    fee_postings = [
+        posting
+        for posting in report["postings"]
+        if posting["account_id"] == "ACC-001" and posting["kind"] == "OVERDRAFT_FEE"
+    ]
+    assert len(fee_postings) == 3
+    assert {(posting["value_day"], posting["amount"]) for posting in fee_postings} == {
+        (2, Decimal("-25.00")),
+        (4, Decimal("-25.00")),
+        (5, Decimal("-25.00")),
+    }
 
 
 def test_replay_is_deterministic() -> None:

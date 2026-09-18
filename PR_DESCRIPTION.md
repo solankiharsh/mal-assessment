@@ -1,56 +1,50 @@
-# PR: Build append-only in-memory ledger core for six-day replay exercise
+# PR: test/docs: close submission evidence gaps and finalize architecture trade-offs
 
-## Why
-This PR implements the requested in-memory ledger core and validates behavior through executable tests and deterministic replay output.
+## Summary
+This is a hardening PR on top of the existing ledger implementation.
+
+- No rewrite of ledger architecture.
+- No history rewrite/squash.
+- No change to canonical final replay outputs.
+- Adds missing executable evidence and final submission artifacts.
 
 ## What changed
-- Implemented single public replay seam in `ledger_core/core.py`.
-- Added fixture accounts and ordered event stream (E1..E10) in `ledger_core/fixtures.py`.
-- Added CLI runner printing daily balances, fees, auth states, errors, and interest in `ledger_core/__main__.py`.
-- Added deterministic renderer helpers in `ledger_core/reporting.py`.
-- Added acceptance-oriented tests in `tests/test_replay.py`.
-- Added one intentionally failing known-red test in `tests_known_red/test_stream_order_sensitivity.py`.
-- Added required decision logs: `NUMBERS.md`, `AMBIGUITIES.md`, `REJECTED.md`, `WORKLOG.md`.
-- Added CI workflow that runs only the passing suite.
-- Added architecture/thought-process artifact in `docs/approach.html`.
-- Added fee-semantics regression coverage to prevent transient intraday negatives from triggering overdraft fees.
-- Added replay checkpoints so tests can assert E7 pre-fee historical closes literally.
 
-## Design reasoning
-1. **Replay order and value date are separated intentionally**
-   - Decision outcomes (auth approve/decline) are stream-order facts.
-   - Monetary closes are value-date projections and can be historically shifted by backdated events.
-2. **Ledger is append-only**
-   - No event or posting is mutated/deleted.
-   - Reversals are compensating entries.
-3. **Fees are assessed at most once per account/day**
-   - Fee reconciliation is chronological and idempotent by `(account, day)`.
-4. **Interest is exact at currency precision**
-   - Daily accruals are rounded per-currency and summed exactly into Day-6 capitalization.
-5. **Fixture pass ≠ domain correctness**
-   - E1–E10 alone did not distinguish end-of-day fee semantics from transient-balance fee semantics.
-   - A minimal Day-1 debit/credit counterexample exposed the bug and drove a focused fee-timing fix.
+### Test evidence hardening
+- Proved `E6` rejected settlement has zero monetary effect by asserting no posting exists with `source_event_id == "E6"`.
+- Proved append-only E7/E9 semantics directly through postings:
+  - E7 remains `-620.00` at value day 2,
+  - E9 is separate `+620.00` at value day 2 with `reversal_of_event_id == "E7"`.
+- Proved overdraft fee postings persist after E9 with exact assessment days `{2,4,5}` and amount `-25.00` once/day.
+- Locked ACC-002 daily interest and capitalization literals:
+  - daily accruals `0.000, 0.000, 0.000, 0.000, 0.004, 0.004`,
+  - capitalization `0.008`,
+  - Day 6 close `10.008`.
+- Retained installment literals `3.333, 3.333, 3.334` and now explicitly assert exact sum `10.000`.
 
-## Incorrect acceptance criteria explicitly rejected
-See `REJECTED.md` for complete rationale. Rejected criteria:
-- “E7 causes exactly one overdraft fee…”
-- “After E9, all balances and fees return pre-E7…”
-- “All E10 instalments must be 3.334…”
-- “Discard remainder if rounded accrual sum mismatches capitalization…”
+### Numeric/tooling/document consistency
+- Removed arbitrary build pin floor (`setuptools>=68` → `setuptools`).
+- Centralized six-day bound in code with `WINDOW_END_DAY = 6`.
+- Expanded `NUMBERS.md` with runtime/toolchain numeric choices and rationale.
+- Expanded `AMBIGUITIES.md` with temporal semantics now critical to behavior.
 
-## How to verify
-- Replay output:
-  - `python -m ledger_core`
-- Passing tests:
-  - `python -m pytest tests`
-- Required known-red test (must fail):
-  - `python -m pytest tests_known_red/test_stream_order_sensitivity.py`
-- Fee timing regression:
-  - `python -m pytest tests/test_replay.py -k transient_intraday_negative`
+### Architecture submission artifacts
+- Rewrote canonical architecture text in `ARCHITECTURE_DECISIONS.md` with four required sections.
+- Corrected lifecycle honesty: implemented non-settlement terminal state is exactly `DECLINED`.
+- Added explicit production-gap lifecycle states as non-implemented.
+- Updated `docs/approach.html` with synchronized “Production Architecture & Trade-offs” section.
+- Generated required PDF: `docs/architecture-tradeoffs.pdf` (3 pages, under 25 MB).
 
-## Reviewer checklist
-- [ ] Daily report includes Day 1..Day 6 closes, fees, auth states, errors, interest
-- [ ] Auth-A approved then settled; Auth-Z settlement rejected; Auth-B declined in canonical order
-- [ ] E10 instalments conserve exactly BHD 10.000 as `3.333, 3.333, 3.334`
-- [ ] Interest capitalization equals exact sum of rounded daily accruals
-- [ ] `REJECTED.md` includes all incorrect criteria and abandoned approaches
+## Regulatory references used (primary CBUAE URLs)
+- https://rulebook.centralbank.ae/en/rulebook/article-7-internal-control-system
+- https://rulebook.centralbank.ae/en/rulebook/consumer-protection-standards
+- https://rulebook.centralbank.ae/en/rulebook/4-record-keeping
+
+## Verification
+- `python -m pytest tests` → pass.
+- `python -m pytest tests_known_red/test_stream_order_sensitivity.py` → intentional fail (expected).
+- `python -m ledger_core` → output inspected.
+- `docs/architecture-tradeoffs.pdf` verified:
+  - page count: 3,
+  - size: < 25 MB,
+  - all pages rendered and visually checked.

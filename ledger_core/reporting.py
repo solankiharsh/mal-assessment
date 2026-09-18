@@ -3,13 +3,17 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 
+from .core import WINDOW_DAYS
+
 
 def render_report(report: dict) -> str:
+    first_day = min(WINDOW_DAYS)
+    last_day = max(WINDOW_DAYS)
     lines = []
-    lines.append("Ledger Replay Report (Day 1 to Day 6)")
+    lines.append(f"Ledger Replay Report (Day {first_day} to Day {last_day})")
     for account_id, days in report["daily_report"].items():
         lines.append(f"\n{account_id}")
-        for day in range(1, 7):
+        for day in WINDOW_DAYS:
             row = days[day]
             auth_states = ", ".join(f"{auth['auth_id']}:{auth['status']}" for auth in row["authorizations"]) or "-"
             error_codes = ", ".join(error["code"] for error in row["errors"]) or "-"

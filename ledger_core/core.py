@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 from decimal import Decimal, ROUND_FLOOR, ROUND_HALF_UP
 
-WINDOW_DAYS = range(1, 7)
+WINDOW_END_DAY = 6
+WINDOW_DAYS = range(1, WINDOW_END_DAY + 1)
 INTEREST_RATE = Decimal("0.0004")
 AED_FEE = Decimal("25.00")
 
@@ -51,7 +52,7 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
             current_open_booked_day = booked_day
         elif booked_day > current_open_booked_day:
             assess_overdraft_fees_for_days(
-                range(current_open_booked_day, min(6, booked_day - 1) + 1),
+                range(current_open_booked_day, min(WINDOW_END_DAY, booked_day - 1) + 1),
                 postings,
                 fee_days,
                 account_map,
@@ -244,7 +245,7 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
 
     if current_open_booked_day is not None:
         assess_overdraft_fees_for_days(
-            range(current_open_booked_day, 7),
+            range(current_open_booked_day, WINDOW_END_DAY + 1),
             postings,
             fee_days,
             account_map,
@@ -270,7 +271,7 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
             postings.append(
                 {
                     "account_id": account_id,
-                    "value_day": 6,
+                    "value_day": WINDOW_END_DAY,
                     "amount": interest_capitalization[account_id],
                     "currency": currency,
                     "kind": "INTEREST_CAPITALIZATION",
@@ -375,7 +376,7 @@ def assess_overdraft_fees_for_days(
     account_map: dict[str, dict],
 ) -> None:
     for day in days:
-        if day < 1 or day > 6:
+        if day < 1 or day > WINDOW_END_DAY:
             continue
         for account_id in sorted(account_map):
             currency = account_map[account_id]["currency"]
@@ -404,7 +405,7 @@ def reconcile_historical_fees(
 ) -> None:
     if current_open_booked_day is None:
         return
-    max_closed_day = min(6, current_open_booked_day - 1)
+    max_closed_day = min(WINDOW_END_DAY, current_open_booked_day - 1)
     if max_closed_day < 1:
         return
     assess_overdraft_fees_for_days(range(1, max_closed_day + 1), postings, fee_days, account_map)
@@ -422,7 +423,7 @@ def record_pre_fee_checkpoint(
     if current_open_booked_day is None:
         return
 
-    max_day = min(6, max(booked_day, current_open_booked_day))
+    max_day = min(WINDOW_END_DAY, max(booked_day, current_open_booked_day))
     closes = {
         day: close_for_day(account_id, day, postings, account_map)
         for day in range(1, max_day + 1)

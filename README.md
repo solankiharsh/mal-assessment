@@ -77,6 +77,7 @@ python -m pytest tests_known_red/test_stream_order_sensitivity.py
 - Follow-up PR notes: `PR_NOTES.md`.
 - Visual thought-process artifact: `docs/approach.html`.
 - Architecture/production considerations: `ARCHITECTURE_DECISIONS.md`.
+- Submission PDF: `docs/architecture-tradeoffs.pdf`.
 
 ## 📁 Project map
 
@@ -85,3 +86,37 @@ python -m pytest tests_known_red/test_stream_order_sensitivity.py
 - `ledger_core/reporting.py` — renderers
 - `tests/test_replay.py` — passing business invariant tests
 - `tests_known_red/test_stream_order_sensitivity.py` — intentional failing design test
+
+## 🧭 Flow diagrams
+
+```mermaid
+sequenceDiagram
+participant Caller
+participant Replay as replay_ledger
+participant Ledger as AppendOnlyPostings
+participant Fees as assess_overdraft_fees_for_days
+participant Close as close_for_day
+
+Caller->>Replay: replay_ledger(accounts, events)
+loop Events in supplied stream order
+    Replay->>Replay: process event decisions
+    Replay->>Ledger: append monetary posting
+    Replay->>Fees: reconcile closed historical days
+    Fees->>Close: close_for_day(account_id, day)
+    Close-->>Fees: effective day close
+    Fees->>Ledger: append fee once per account/day
+end
+Replay->>Fees: assess final closed days
+Replay-->>Caller: daily report and replay checkpoints
+```
+
+```mermaid
+stateDiagram-v2
+[*] --> ACTIVE: authorization accepted
+[*] --> DECLINED: authorization rejected
+ACTIVE --> SETTLED: matching settlement
+ACTIVE --> ERROR: invalid settlement reference
+DECLINED --> [*]
+SETTLED --> [*]
+ERROR --> [*]
+```
