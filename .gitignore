@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+ledger-spec-pack/
+/ledger-spec-pack/
+/Users/harshvardhansolanki/Downloads/ledger-spec-pack/
