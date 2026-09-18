@@ -59,3 +59,47 @@ def test_replay_is_deterministic() -> None:
     first = replay_ledger(default_accounts(), default_events())
     second = replay_ledger(default_accounts(), default_events())
     assert first == second
+
+
+def test_overdraft_fee_uses_closed_day_not_transient_intraday_negative() -> None:
+    accounts = [
+        {"account_id": "ACC-X", "currency": "AED", "opening_balance": Decimal("0.00")},
+    ]
+    events = [
+        {
+            "id": "X1",
+            "booked_day": 1,
+            "value_day": 1,
+            "type": "DEBIT",
+            "account_id": "ACC-X",
+            "amount": Decimal("50.00"),
+        },
+        {
+            "id": "X2",
+            "booked_day": 1,
+            "value_day": 1,
+            "type": "CREDIT",
+            "account_id": "ACC-X",
+            "amount": Decimal("100.00"),
+        },
+    ]
+
+    report = replay_ledger(accounts, events)
+
+    assert report["daily_report"]["ACC-X"][1]["closing_balance"] == Decimal("50.00")
+    assert report["daily_report"]["ACC-X"][1]["fee_assessed"] == Decimal("0.00")
+
+
+def test_e7_checkpoint_exposes_pre_fee_historical_closes() -> None:
+    report = replay_ledger(default_accounts(), default_events())
+
+    checkpoint = next(
+        item
+        for item in report["checkpoints"]
+        if item["kind"] == "PRE_FEE_RECONCILIATION" and item["event_id"] == "E7"
+    )
+
+    assert checkpoint["closes"][2] == Decimal("-370.00")
+    assert checkpoint["closes"][3] == Decimal("30.00")
+    assert checkpoint["closes"][4] == Decimal("-155.00")
+    assert checkpoint["closes"][5] == Decimal("-155.00")

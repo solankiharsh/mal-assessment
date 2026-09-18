@@ -37,15 +37,26 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
     }
     postings: list[dict] = []
     errors: list[dict] = []
+    checkpoints: list[dict] = []
     auths: dict[str, dict] = {}
     seen_event_ids: set[str] = set()
     fee_days: dict[str, set[int]] = defaultdict(set)
-    max_booked_day = 0
+    current_open_booked_day: int | None = None
 
     for event in events:
         event_id = event["id"]
         booked_day = event["booked_day"]
-        max_booked_day = max(max_booked_day, booked_day)
+
+        if current_open_booked_day is None:
+            current_open_booked_day = booked_day
+        elif booked_day > current_open_booked_day:
+            assess_overdraft_fees_for_days(
+                range(current_open_booked_day, min(6, booked_day - 1) + 1),
+                postings,
+                fee_days,
+                account_map,
+            )
+            current_open_booked_day = booked_day
 
         if event_id in seen_event_ids:
             errors.append(
@@ -77,7 +88,16 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
                     "source_event_id": event_id,
                 }
             )
-            reconcile_fees(account_id, currency, booked_day, postings, fee_days, account_map)
+            record_pre_fee_checkpoint(
+                checkpoints,
+                event_id,
+                account_id,
+                booked_day,
+                postings,
+                account_map,
+                current_open_booked_day,
+            )
+            reconcile_historical_fees(postings, fee_days, account_map, current_open_booked_day)
 
         elif event_type == "AUTHORIZATION":
             auth_id = event["auth_id"]
@@ -139,7 +159,16 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
                         "auth_id": auth_id,
                     }
                 )
-                reconcile_fees(account_id, currency, booked_day, postings, fee_days, account_map)
+                record_pre_fee_checkpoint(
+                    checkpoints,
+                    event_id,
+                    account_id,
+                    booked_day,
+                    postings,
+                    account_map,
+                    current_open_booked_day,
+                )
+                reconcile_historical_fees(postings, fee_days, account_map, current_open_booked_day)
 
         elif event_type == "REVERSAL":
             target_event_id = event["reversal_of_event_id"]
@@ -166,7 +195,16 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
                         "reversal_of_event_id": target_event_id,
                     }
                 )
-                reconcile_fees(account_id, currency, booked_day, postings, fee_days, account_map)
+                record_pre_fee_checkpoint(
+                    checkpoints,
+                    event_id,
+                    account_id,
+                    booked_day,
+                    postings,
+                    account_map,
+                    current_open_booked_day,
+                )
+                reconcile_historical_fees(postings, fee_days, account_map, current_open_booked_day)
 
         elif event_type == "CREDIT_INSTALMENTS":
             instalments = split_equal_instalments(event["amount"], event["instalments"], currency)
@@ -182,7 +220,16 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
                         "instalment_index": index,
                     }
                 )
-            reconcile_fees(account_id, currency, booked_day, postings, fee_days, account_map)
+            record_pre_fee_checkpoint(
+                checkpoints,
+                event_id,
+                account_id,
+                booked_day,
+                postings,
+                account_map,
+                current_open_booked_day,
+            )
+            reconcile_historical_fees(postings, fee_days, account_map, current_open_booked_day)
 
         else:
             errors.append(
@@ -194,6 +241,14 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
                     "message": f"Unknown event type {event_type}",
                 }
             )
+
+    if current_open_booked_day is not None:
+        assess_overdraft_fees_for_days(
+            range(current_open_booked_day, 7),
+            postings,
+            fee_days,
+            account_map,
+        )
 
     daily_interest = {account_id: {} for account_id in account_map}
     interest_capitalization = {account_id: quantize_currency(Decimal("0"), info["currency"]) for account_id, info in account_map.items()}
@@ -262,6 +317,7 @@ def replay_ledger(accounts: list[dict], events: list[dict]) -> dict:
         "daily_interest": daily_interest,
         "interest_capitalization": interest_capitalization,
         "daily_report": daily_report,
+        "checkpoints": checkpoints,
     }
 
 
@@ -312,30 +368,71 @@ def close_for_day(account_id: str, day: int, postings: list[dict], account_map: 
     return quantize_currency(amount, currency)
 
 
-def reconcile_fees(
-    account_id: str,
-    currency: str,
-    up_to_booked_day: int,
+def assess_overdraft_fees_for_days(
+    days: range,
     postings: list[dict],
     fee_days: dict[str, set[int]],
     account_map: dict[str, dict],
 ) -> None:
-    if currency != "AED":
+    for day in days:
+        if day < 1 or day > 6:
+            continue
+        for account_id in sorted(account_map):
+            currency = account_map[account_id]["currency"]
+            if currency != "AED" or day in fee_days[account_id]:
+                continue
+            close = close_for_day(account_id, day, postings, account_map)
+            if close < Decimal("0"):
+                postings.append(
+                    {
+                        "account_id": account_id,
+                        "value_day": day,
+                        "amount": quantize_currency(-AED_FEE, currency),
+                        "currency": currency,
+                        "kind": "OVERDRAFT_FEE",
+                        "source_event_id": f"FEE-{account_id}-D{day}",
+                    }
+                )
+                fee_days[account_id].add(day)
+
+
+def reconcile_historical_fees(
+    postings: list[dict],
+    fee_days: dict[str, set[int]],
+    account_map: dict[str, dict],
+    current_open_booked_day: int | None,
+) -> None:
+    if current_open_booked_day is None:
+        return
+    max_closed_day = min(6, current_open_booked_day - 1)
+    if max_closed_day < 1:
+        return
+    assess_overdraft_fees_for_days(range(1, max_closed_day + 1), postings, fee_days, account_map)
+
+
+def record_pre_fee_checkpoint(
+    checkpoints: list[dict],
+    event_id: str,
+    account_id: str,
+    booked_day: int,
+    postings: list[dict],
+    account_map: dict[str, dict],
+    current_open_booked_day: int | None,
+) -> None:
+    if current_open_booked_day is None:
         return
 
-    for day in range(1, min(6, up_to_booked_day) + 1):
-        if day in fee_days[account_id]:
-            continue
-        close = close_for_day(account_id, day, postings, account_map)
-        if close < Decimal("0"):
-            postings.append(
-                {
-                    "account_id": account_id,
-                    "value_day": day,
-                    "amount": quantize_currency(-AED_FEE, currency),
-                    "currency": currency,
-                    "kind": "OVERDRAFT_FEE",
-                    "source_event_id": f"FEE-{account_id}-D{day}",
-                }
-            )
-            fee_days[account_id].add(day)
+    max_day = min(6, max(booked_day, current_open_booked_day))
+    closes = {
+        day: close_for_day(account_id, day, postings, account_map)
+        for day in range(1, max_day + 1)
+    }
+    checkpoints.append(
+        {
+            "kind": "PRE_FEE_RECONCILIATION",
+            "event_id": event_id,
+            "account_id": account_id,
+            "booked_day": booked_day,
+            "closes": closes,
+        }
+    )

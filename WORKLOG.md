@@ -31,3 +31,15 @@
 - Authored `PR_DESCRIPTION.md` with design rationale and reviewer checklist.
 - Added visual architecture/thought-process artifact at `docs/approach.html`.
 - Updated `README.md` with CI and artifact references.
+
+## 2026-09-18 14:37 +04:00
+- Re-ran baseline verification before semantic changes:
+  - `python -m pytest tests` => pass.
+  - `python -m pytest tests_known_red/test_stream_order_sensitivity.py` => intentional fail.
+
+## 2026-09-18 14:38 +04:00
+- Added minimal fee-timing counterexample test showing transient intraday negative should not trigger overdraft fee.
+- Observed failure before fix: final Day 1 close was `25.00` instead of `50.00`, confirming premature fee assessment.
+- Refactored fee timing to assess only closed day(s), while still reconciling already-closed historical days after backdated postings.
+- Added generic replay checkpoints and asserted E7 pre-fee closes: Day2 `-370.00`, Day3 `30.00`, Day4 `-155.00`, Day5 `-155.00`.
+- Re-ran passing suite; all passing tests green after fix.
