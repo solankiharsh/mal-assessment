@@ -27,13 +27,16 @@ Replay-->>Caller: daily report and replay checkpoints
 
 ```mermaid
 stateDiagram-v2
-[*] --> ACTIVE: authorization accepted
-[*] --> DECLINED: authorization rejected
-ACTIVE --> SETTLED: matching settlement
-ACTIVE --> ERROR: invalid settlement reference
+[*] --> ACTIVE: authorization approved
+[*] --> DECLINED: authorization declined
+ACTIVE --> SETTLED: valid matching settlement
+note right of ACTIVE
+  Invalid or unknown settlement
+  emits a replay error.
+  Authorization state is unchanged.
+end note
 DECLINED --> [*]
 SETTLED --> [*]
-ERROR --> [*]
 ```
 
 ## 1) Append-only at scale
@@ -218,3 +221,7 @@ This implementation is intentionally narrow; each simplification defers concrete
 | No maker-checker in runtime path | Exercise is offline replay only | Unauthorized high-impact backvalue operations |
 | No schema/event versioning plan | Single fixture evolution only | Breaking changes and migration complexity over time |
 | Limited observability and SLOs | Keep codebase minimal | Slow incident detection and forensic blind spots |
+| No HTTP/API/UI surface | Deliverable is core-only replay engine | Integration contract and access-control boundary are undefined |
+| No overdraft product-limit configuration | Prompt specifies fixed fee behavior only | Product/credit policy enforcement cannot be tuned per account/product |
+| No account lifecycle states (freeze/closure) | Not part of fixture-driven scenarios | Restricted-account operations cannot be blocked by lifecycle rules |
+| Simplified interest product model | Fixed daily rate within six-day window | Compounding variants, rate changes, and accrual-calendar policies are not modeled |

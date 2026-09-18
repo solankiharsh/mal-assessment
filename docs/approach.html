@@ -267,13 +267,16 @@ Replay-&gt;&gt;Fees: assess final closed days
 Replay--&gt;&gt;Caller: daily report and replay checkpoints</code></pre>
 
         <pre><code>stateDiagram-v2
-[*] --&gt; ACTIVE: authorization accepted
-[*] --&gt; DECLINED: authorization rejected
-ACTIVE --&gt; SETTLED: matching settlement
-ACTIVE --&gt; ERROR: invalid settlement reference
+[*] --&gt; ACTIVE: authorization approved
+[*] --&gt; DECLINED: authorization declined
+ACTIVE --&gt; SETTLED: valid matching settlement
+note right of ACTIVE
+  Invalid or unknown settlement
+  emits a replay error.
+  Authorization state is unchanged.
+end note
 DECLINED --&gt; [*]
-SETTLED --&gt; [*]
-ERROR --&gt; [*]</code></pre>
+SETTLED --&gt; [*]</code></pre>
       </section>
 
       <p class="footer">
