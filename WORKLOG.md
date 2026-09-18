@@ -48,3 +48,7 @@
 - Created follow-up branch `pr/followup-ledger-hardening` to raise a formal PR into `main`.
 - Added `PR_NOTES.md` and linked it in `README.md` for reviewer context.
 - No domain logic changes in this branch; metadata/documentation touch only.
+
+## 2026-09-18 14:52 +04:00
+- Added `ARCHITECTURE_DECISIONS.md` covering architecture trade-offs and production-readiness considerations.
+- Linked the document in `README.md` artifact section.
