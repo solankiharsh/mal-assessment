@@ -74,6 +74,7 @@ python -m pytest tests_known_red/test_stream_order_sensitivity.py
 
 - CI workflow: `.github/workflows/ci.yml` (runs passing suite only).
 - PR brief: `PR_DESCRIPTION.md`.
+- Follow-up PR notes: `PR_NOTES.md`.
 - Visual thought-process artifact: `docs/approach.html`.
 
 ## 📁 Project map
@@ -83,4 +84,3 @@ python -m pytest tests_known_red/test_stream_order_sensitivity.py
 - `ledger_core/reporting.py` — renderers
 - `tests/test_replay.py` — passing business invariant tests
 - `tests_known_red/test_stream_order_sensitivity.py` — intentional failing design test
-
